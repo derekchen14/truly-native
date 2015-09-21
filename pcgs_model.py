@@ -17,8 +17,8 @@ import numpy as np
 import pandas as pd
 
 csv_file_object = csv.reader(open('train.csv', 'rb'))       # Load in the csv file
-header = csv_file_object.next()                             # Skip the fist line as it is a header
-data=[]                                                     # Create a variable to hold the data
+header = csv_file_object.next()                             
+data=[]                                                     
 
 for row in csv_file_object:                 # Skip through each row in the csv file
     data.append(row)                        # adding each row to the data variable
@@ -35,15 +35,25 @@ data[ data[0::,9].astype(np.float) >= fare_ceiling, 9 ] = fare_ceiling - 1.0
 fare_bracket_size = 10
 num_price_bracket = fare_ceiling / fare_bracket_size
 
-# number_of_classes = 3                           # I know there were 1st, 2nd and 3rd classes on board.
-number_of_classes = len(np.unique(data[0::,2]))   # But it's better practice to calculate this from the Pclass directly:
-                                                  # just take the length of an array of UNIQUE values in column index 2
+# I know there were 1st, 2nd and 3rd classes on board. But it's better practice
+# to calculate this from the Pclass directly: just take the length of an array 
+# of UNIQUE values in column index 2
+number_of_classes = len(np.unique(data[0::,2]))
 
 num_siblings = len(np.unique(data[0::,6]))
+print "Sibling Count: Should be like 6 ? -------"
+print num_siblings
+print "Max: "+np.max(data[0::,6])
+print "Min: "+np.min(data[0::,6])
 
 female_passenger = data[0::,4] == "female"
-male_passenger = data[0::,4] != "female"
+print female_passenger
 
+
+male_passenger = data[0::,4] != "female"
+class_rows = data[0::,2].astype(np.float)
+price_rows = data[0:,9].astype(np.float)
+sibling_rows = data[0::,6].astype(np.float)
 
 # This reference matrix will show the proportion of survivors as a sorted table of
 # gender, class and ticket fare.
@@ -54,21 +64,20 @@ survival_table = np.zeros([2,number_of_classes,num_price_bracket,num_siblings],f
 for i in xrange(number_of_classes):
   for j in xrange(num_price_bracket):
     for k in xrange(num_siblings):
-      women_only_stats = data[ female_passenger & \
+      # return the rows that belong to females
+      women_only_stats = data[ female_passenger & (class_rows == i+1) \
+                               & (price_rows >= j*fare_bracket_size) \
+                               & (price_rows < (j+1)*fare_bracket_size) \
+                               & (sibling_rows < k+1 ), 1]
 
-========STOP HERE====================
-                               & (data[0::,2].astype(np.float) == i+1)                  CLASS    \
-                               & (data[0:,9].astype(np.float) >= j*fare_bracket_size)   PRICE    \
-                               & (data[0:,9].astype(np.float) < (j+1)*fare_bracket_size), 1]
-
-      men_only_stats = data[ male_passenger \
-                               & (data[0::,2].astype(np.float) == i+1) \
-                               & (data[0:,9].astype(np.float) >= j*fare_bracket_size) \
-                               & (data[0:,9].astype(np.float) < (j+1)*fare_bracket_size), 1]
+      men_only_stats = data[ male_passenger & (class_rows == i+1) \
+                               & (price_rows >= j*fare_bracket_size) \
+                               & (price_rows < (j+1)*fare_bracket_size) \
+                               & (sibling_rows < k+1 ), 1]
                                  #if i == 0 and j == 3:
 
-      survival_table[0,i,j] = np.mean(women_only_stats.astype(np.float))  # Female stats
-      survival_table[1,i,j] = np.mean(men_only_stats.astype(np.float))    # Male stats
+      survival_table[0,i,j,k] = np.mean(women_only_stats.astype(np.float))  # Female stats
+      survival_table[1,i,j,k] = np.mean(men_only_stats.astype(np.float))    # Male stats
 
 # Since in python if it tries to find the mean of an array with nothing in it
 # (such that the denominator is 0), then it returns nan, we can convert these to 0
@@ -94,34 +103,48 @@ predictions_file_object.writerow(["PassengerId", "Survived"])
 
 # First thing to do is bin up the price file
 for row in test_file_object:
-    for j in xrange(num_price_bracket):
-        # If there is no fare then place the price of the ticket according to class
-        try:
-            row[8] = float(row[8])    # No fare recorded will come up as a string so
-                                      # try to make it a float
-        except:                       # If fails then just bin the fare according to the class
-            bin_fare = 3 - float(row[1])
-            break                     # Break from the loop and move to the next row
-        if row[8] > fare_ceiling:     # Otherwise now test to see if it is higher
-                                      # than the fare ceiling we set earlier
-            bin_fare = num_price_bracket - 1
-            break                     # And then break to the next row
+    # Now I have the binned fare, passenger class, and whether female or male,
+    # we can just cross ref their details with our survival table
 
-        if row[8] >= j*fare_bracket_size\
-            and row[8] < (j+1)*fare_bracket_size:     # If passed these tests then loop through
-                                                      # each bin until you find the right one
-                                                      # append it to the bin_fare
-                                                      # and move to the next loop
-            bin_fare = j
-            break
-        # Now I have the binned fare, passenger class, and whether female or male, we can
-        # just cross ref their details with our survival table
-    if row[3] == 'female':
-        predictions_file_object.writerow([row[0], "%d" % int(survival_table[ 0, float(row[1]) - 1, bin_fare ])])
-    else:
-        predictions_file_object.writerow([row[0], "%d" % int(survival_table[ 1, float(row[1]) - 1, bin_fare])])
+  sex_bracket = 0 if row[3] == 'female' else 1
+  class_bracket = float(row[1]) - 1
+  price_bracket = calculate_price_bracket(row[8], num_price_bracket)
+  sibl_bracket = float(row[6]) - 1  # CHECK ON THIS ONE
+
+  survival_estimate = survival_table[sex_bracket, class_bracket, price_bracket, sibl_bracket]
+  prediction = [row[0], "%d" % int(survival_estimate)]
+  predictions_file_object.writerow(prediction)
 
 # Close out the files
 test_file.close()
 predictions_file.close()
+
+
+
+def calculate_price_bracket(price):
+  for j in xrange(num_price_bracket):
+    # If there is no fare then place the price of the ticket according to class
+    try: # No fare recorded will come up as a string so try to make it a float         
+      price = float(price)    
+    except:                # If fails then just bin the fare according to the class
+      price_bracket = 3 - float(row[1])
+      break
+    # Otherwise now test to see if it is higher than the fare ceiling
+    if price > fare_ceiling:     
+      price_bracket = num_price_bracket - 1
+      break
+    # If the price is in between the appropriate bracket range
+    if (price >= j*fare_bracket_size) and (price < (j+1)*fare_bracket_size):     
+    # then append it to the price_bracket and move to the next loop
+      price_bracket = j
+      break
+
+  return price_bracket
+  pass
+
+
+
+
+
+
 

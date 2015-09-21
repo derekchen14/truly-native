@@ -56,6 +56,10 @@ for i in xrange(number_of_classes):
         survival_table[0,i,j] = np.mean(women_only_stats.astype(np.float))  # Female stats
         survival_table[1,i,j] = np.mean(men_only_stats.astype(np.float))    # Male stats
 
+
+print "-------- Survival Table---------"
+print survival_table
+
 # Since in python if it tries to find the mean of an array with nothing in it
 # (such that the denominator is 0), then it returns nan, we can convert these to 0
 # by just saying where does the array not equal the array, and set these to 0.
@@ -105,8 +109,11 @@ for row in test_file_object:
     if row[3] == 'female':
         predictions_file_object.writerow([row[0], "%d" % int(survival_table[ 0, float(row[1]) - 1, bin_fare ])])
     else:
-        predictions_file_object.writerow([row[0], "%d" % int(survival_table[ 1, float(row[1]) - 1, bin_fare])])
+        predictions_file_object.writerow([row[0], "%d" % int(survival_table[ 1, float(row[1]) - 1, bin_fare ])])
 
 # Close out the files
 test_file.close()
 predictions_file.close()
+
+
+'''

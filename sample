@@ -1,0 +1,43 @@
+import numpy as np
+
+dta = np.array([3,2,4,1,1,2,3,1])
+
+bollock = 7
+
+gender_bracket = 0 if bollock > 5 else 1
+print "gender_bracket"
+print gender_bracket
+
+sex_bracket = 0 if bollock < 5 else 1
+print "should say 1"
+print sex_bracket
+
+'''
+for i in xrange(number_of_classes):
+  women_only_stats = data[ female_passenger & (class_rows == 1), 1]
+  men_only_stats = data[ male_passenger & (class_rows == 1), 1]
+
+  survival_table[0,0] = np.mean(women stats)
+  survival_table[1,0] = np.mean(men stats)
+
+  women_only_stats = data[ female_passenger & (class_rows == 2), 1]
+  men_only_stats = data[ male_passenger & (class_rows == 2), 1]
+
+  survival_table[0,1] = np.mean(women stats)
+  survival_table[1,1] = np.mean(men stats)
+
+  women_only_stats = data[ female_passenger & (class_rows == 3), 1]
+  men_only_stats = data[ male_passenger & (class_rows == 3), 1]
+
+  survival_table[0,2] = np.mean(women stats)
+  survival_table[1,2] = np.mean(men stats)
+
+  survival_table = 
+  	[0.6,0.3,0.1]  # females
+  	[0.4,0.2,0.1]  # males
+
+  	# On average, 60% females from First Class survived
+  	# You could say that females from First Class have a 60% chance of survival
+  	# On average, 20% of males from Second Class survived
+
+'''
